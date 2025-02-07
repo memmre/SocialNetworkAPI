@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.get("/")
+# /status Endpoint
+@router.get("/api/status")
 def root():
-    return {"message": strings.rootMessage}
+    return {"message": strings.statusMessage}

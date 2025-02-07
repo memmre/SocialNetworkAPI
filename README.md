@@ -64,9 +64,9 @@ SocialNetworkAPI/
 ## 📝 Sample API Requests
 • GET Request:
 ```bash
-curl -X GET "http://127.0.0.1:8000/status"
+curl -X GET "http://127.0.0.1:8000/api/status"
 ```
 • POST Request:
 ```bash
-curl -X POST "http://127.0.0.1:8000/signInWithEmailAddressAndPassword/" -H "Content-Type: application/json" -d '{"emailAddress": "johndoe@example.com", "password": "Passw0rd!"}'
+curl -X POST "http://127.0.0.1:8000/api/signInWithEmailAddressAndPassword/" -H "Content-Type: application/json" -d '{"emailAddress": "johndoe@example.com", "password": "Passw0rd!"}'
 ```

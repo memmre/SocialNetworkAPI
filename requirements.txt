@@ -1,4 +1,6 @@
 asyncpg
+bcrypt
 fastapi
+passlib
 python-dotenv
 uvicorn[standard]
