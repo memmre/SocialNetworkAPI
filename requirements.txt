@@ -1,6 +1,7 @@
 asyncpg
 bcrypt
 fastapi
+jwt
 passlib
 python-dotenv
 uvicorn[standard]

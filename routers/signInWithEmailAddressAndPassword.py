@@ -1,8 +1,7 @@
 from asyncpg import Connection
-from constants import strings
 from fastapi import APIRouter, Depends, HTTPException
+from helpers.authentication import cryptContext, create_access_token, create_refresh_token
 from helpers.databaseHelper import getDatabaseConnection
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 # Request Model
@@ -18,26 +17,34 @@ async def signInWithEmailAddressAndPassword(
     db: Connection = Depends(getDatabaseConnection)
 ):
     try:
-        if request.email_address is None:
-            raise HTTPException(status_code=400, detail=strings.emailAddressRequiredMessage)
-
-        if request.password is None:
-            raise HTTPException(status_code=400, detail=strings.passwordRequiredMessage)
+        if not request.email_address:
+            raise HTTPException(status_code=400, detail="Email address is required")
+        if not request.password:
+            raise HTTPException(status_code=400, detail="Password is required")
     
-        query = "SELECT * FROM users WHERE email_address = $1"
+        query = """
+            SELECT id, first_name, last_name, email_address, username, about, image_path, created_at, updated_at, password_hash 
+            FROM users WHERE email_address = $1
+        """
         user = await db.fetchrow(query, request.email_address)
 
         if not user:
-            raise HTTPException(status_code=404, detail=strings.userNotFoundErrorMessage)
-
-        cryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            raise HTTPException(status_code=404, detail="User not found")
         
         if not cryptContext.verify(request.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail=strings.wrongPasswordErrorMessage)
+            raise HTTPException(status_code=401, detail="Wrong password")
+
+        access_token = create_access_token(data={"sub": user["email_address"]})
+        refresh_token = create_refresh_token(data={"sub": user["email_address"]})
+
+        await db.execute("UPDATE users SET refresh_token = $1 WHERE email_address = $2", refresh_token, request.email_address)
 
         return {
             "status": "success",
             "message": "Sign in successful.",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
             "user": {
                 "id": user["id"],
                 "first_name": user["first_name"],
@@ -54,6 +61,4 @@ async def signInWithEmailAddressAndPassword(
         raise
     except Exception as e:
         print(f"Exception on signInWithEmailAddressAndPassword: {e}")
-        raise HTTPException(status_code=500, detail=strings.serverErrorMessage)
-    finally:
-        await db.close()
+        raise HTTPException(status_code=500, detail="Internal server error")
