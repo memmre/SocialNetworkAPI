@@ -54,7 +54,9 @@ SocialNetworkAPI/
 ├── helpers/
 │   └── databaseHelper.py
 ├── routers/
-│   └── root.py
+│   ├── signInWithEmailAddressAndPassword.py
+│   ├── signInWithUsernameAndPassword.py
+│   └── status.py
 ├── main.py
 ├── README.md
 ├── requirements.txt

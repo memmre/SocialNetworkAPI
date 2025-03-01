@@ -6,4 +6,7 @@ router = APIRouter()
 # /status Endpoint
 @router.get("/api/status")
 def root():
-    return {"message": strings.statusMessage}
+    return {
+        "status": "success",
+        "message": strings.statusMessage,
+    }

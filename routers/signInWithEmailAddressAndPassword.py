@@ -36,15 +36,19 @@ async def signInWithEmailAddressAndPassword(
             raise HTTPException(status_code=401, detail=strings.wrongPasswordErrorMessage)
 
         return {
-            "id": user["id"],
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "email_address": user["email_address"],
-            "username": user["username"],
-            "about": user["about"],
-            "image_path": user["image_path"],
-            "created_at": user["created_at"],
-            "updated_at": user["updated_at"],
+            "status": "success",
+            "message": "Sign in successful.",
+            "user": {
+                "id": user["id"],
+                "first_name": user["first_name"],
+                "last_name": user["last_name"],
+                "email_address": user["email_address"],
+                "username": user["username"],
+                "about": user["about"],
+                "image_path": user["image_path"],
+                "created_at": user["created_at"],
+                "updated_at": user["updated_at"],
+            },
         }
     except HTTPException:
         raise
