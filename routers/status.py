@@ -1,12 +1,11 @@
-from constants import strings
+from constants import messages
 from fastapi import APIRouter
 
-router = APIRouter()
-
 # /status Endpoint
+router = APIRouter()
 @router.get("/api/status")
-def root():
+def status():
     return {
         "status": "success",
-        "message": strings.statusMessage,
+        "message": messages.statusMessage,
     }

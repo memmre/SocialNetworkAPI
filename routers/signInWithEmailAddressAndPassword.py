@@ -1,64 +1,61 @@
 from asyncpg import Connection
 from fastapi import APIRouter, Depends, HTTPException
-from helpers.authentication import cryptContext, create_access_token, create_refresh_token
+from constants import exceptionMessages, messages
+from helpers.authentication import cryptContext, createAccessToken, createRefreshToken
 from helpers.databaseHelper import getDatabaseConnection
-from pydantic import BaseModel
-
-# Request Model
-class SignInRequest(BaseModel):
-    email_address: str
-    password: str
+from models.signInRequest import SignInRequest
 
 # /signInWithEmailAddressAndPassword Endpoint
 router = APIRouter()
 @router.post("/api/signInWithEmailAddressAndPassword")
 async def signInWithEmailAddressAndPassword(
     request: SignInRequest,
-    db: Connection = Depends(getDatabaseConnection)
+    database: Connection = Depends(getDatabaseConnection)
 ):
     try:
-        if not request.email_address:
-            raise HTTPException(status_code=400, detail="Email address is required")
+        if not request.identifier:
+            raise HTTPException(status_code=400, detail=exceptionMessages.emailAddressRequiredMessage)
         if not request.password:
-            raise HTTPException(status_code=400, detail="Password is required")
+            raise HTTPException(status_code=400, detail=exceptionMessages.passwordRequiredMessage)
     
-        query = """
-            SELECT id, first_name, last_name, email_address, username, about, image_path, created_at, updated_at, password_hash 
+        getUserQuery = """
+            SELECT id, first_name, last_name, email_address, username, password_hash, about, image_path, created_at, updated_at
             FROM users WHERE email_address = $1
         """
-        user = await db.fetchrow(query, request.email_address)
+        user = await database.fetchrow(getUserQuery, request.identifier)
 
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail=exceptionMessages.userNotFoundMessage)
         
         if not cryptContext.verify(request.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Wrong password")
+            raise HTTPException(status_code=401, detail=exceptionMessages.wrongPasswordMessage)
 
-        access_token = create_access_token(data={"sub": user["email_address"]})
-        refresh_token = create_refresh_token(data={"sub": user["email_address"]})
+        accessToken = createAccessToken(data={"sub": user["email_address"]})
+        refreshToken = createRefreshToken(data={"sub": user["email_address"]})
 
-        await db.execute("UPDATE users SET refresh_token = $1 WHERE email_address = $2", refresh_token, request.email_address)
+        updateTokenQuery = "UPDATE users SET refresh_token = $1 WHERE email_address = $2"
+        await database.execute(updateTokenQuery, refreshToken, request.identifier)
 
         return {
             "status": "success",
-            "message": "Sign in successful.",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
+            "message": messages.signInSuccessMessage,
+            "accessToken": accessToken,
+            "refreshToken": refreshToken,
+            "tokenType": "bearer",
             "user": {
                 "id": user["id"],
-                "first_name": user["first_name"],
-                "last_name": user["last_name"],
-                "email_address": user["email_address"],
+                "firstName": user["first_name"],
+                "lastName": user["last_name"],
+                "emailAddress": user["email_address"],
                 "username": user["username"],
                 "about": user["about"],
-                "image_path": user["image_path"],
-                "created_at": user["created_at"],
-                "updated_at": user["updated_at"],
+                "imagePath": user["image_path"],
+                "createdAt": user["created_at"],
+                "updatedAt": user["updated_at"],
             },
         }
     except HTTPException:
         raise
     except Exception as e:
         print(f"Exception on signInWithEmailAddressAndPassword: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=exceptionMessages.serverErrorMessage)

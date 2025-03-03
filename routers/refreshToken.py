@@ -1,48 +1,49 @@
 from asyncpg import Connection
 from fastapi import APIRouter, Depends, HTTPException
-from helpers.authentication import ALGORITHM, REFRESH_SECRET_KEY, create_access_token
+from constants import exceptionMessages
+from helpers.authentication import ALGORITHM, REFRESH_SECRET_KEY, createAccessToken
 from helpers.databaseHelper import getDatabaseConnection
 from jwt import decode, ExpiredSignatureError, InvalidTokenError
-from pydantic import BaseModel
-
-# Request Model
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+from models.refreshTokenRequest import RefreshTokenRequest
 
 # /refreshToken Endpoint
 router = APIRouter()
 @router.post("/api/refreshToken")
-async def refresh_access_token(request: RefreshTokenRequest, db: Connection = Depends(getDatabaseConnection)):
+async def refreshToken(
+    request: RefreshTokenRequest,
+    database: Connection = Depends(getDatabaseConnection),
+):
     try:
+        if not request.refreshToken:
+            raise HTTPException(status_code=400, detail=exceptionMessages.refreshTokenRequiredMessage)
+        
         query = "SELECT email_address FROM users WHERE refresh_token = $1"
-        user = await db.fetchrow(query, request.refresh_token)
-
+        user = await database.fetchrow(query, request.refreshToken)
+        
         if not user:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+            raise HTTPException(status_code=401, detail=exceptionMessages.invalidRefreshTokenMessage)
 
         try:
-            payload = decode(request.refresh_token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
-            email_address = payload.get("sub")
+            payload = decode(request.refreshToken, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+            emailAddress = payload.get("sub")
 
-            if email_address != user["email_address"]:
-                raise HTTPException(status_code=401, detail="Invalid refresh token")
+            if emailAddress != user["email_address"]:
+                raise HTTPException(status_code=401, detail=exceptionMessages.invalidRefreshTokenMessage)
 
         except ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail="Refresh token expired")
-
+            raise HTTPException(status_code=401, detail=exceptionMessages.expiredRefreshTokenMessage)
         except InvalidTokenError:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+            raise HTTPException(status_code=401, detail=exceptionMessages.invalidRefreshTokenMessage)
 
-        access_token = create_access_token(data={"sub": email_address})
+        accessToken = createAccessToken(data={"sub": emailAddress})
 
         return {
-            "access_token": access_token,
-            "token_type": "bearer"
+            "accessToken": accessToken,
+            "tokenType": "bearer"
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Exception on refresh_access_token: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-    
+        print(f"Exception on refreshToken: {e}")
+        raise HTTPException(status_code=500, detail=exceptionMessages.serverErrorMessage)
