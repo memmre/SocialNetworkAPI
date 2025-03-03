@@ -1,6 +1,6 @@
 from asyncpg import Connection
 from fastapi import APIRouter, Depends, HTTPException
-from constants import exceptionMessages, messages
+from constants import errorMessages, messages
 from helpers.authentication import cryptContext, createAccessToken, createRefreshToken
 from helpers.databaseHelper import getDatabaseConnection
 from models.signInRequest import SignInRequest
@@ -14,9 +14,9 @@ async def signInWithEmailAddressAndPassword(
 ):
     try:
         if not request.identifier:
-            raise HTTPException(status_code=400, detail=exceptionMessages.emailAddressRequiredMessage)
+            raise HTTPException(status_code=400, detail=errorMessages.emailAddressRequiredMessage)
         if not request.password:
-            raise HTTPException(status_code=400, detail=exceptionMessages.passwordRequiredMessage)
+            raise HTTPException(status_code=400, detail=errorMessages.passwordRequiredMessage)
     
         getUserQuery = """
             SELECT id, first_name, last_name, email_address, username, password_hash, about, image_path, created_at, updated_at
@@ -25,14 +25,16 @@ async def signInWithEmailAddressAndPassword(
         user = await database.fetchrow(getUserQuery, request.identifier)
 
         if not user:
-            raise HTTPException(status_code=404, detail=exceptionMessages.userNotFoundMessage)
+            raise HTTPException(status_code=404, detail=errorMessages.userNotFoundMessage)
         
         if not cryptContext.verify(request.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail=exceptionMessages.wrongPasswordMessage)
+            raise HTTPException(status_code=401, detail=errorMessages.wrongPasswordMessage)
 
+        # Generate tokens
         accessToken = createAccessToken(data={"sub": user["email_address"]})
         refreshToken = createRefreshToken(data={"sub": user["email_address"]})
 
+        # Update the refresh token in database
         updateTokenQuery = "UPDATE users SET refresh_token = $1 WHERE email_address = $2"
         await database.execute(updateTokenQuery, refreshToken, request.identifier)
 
@@ -58,4 +60,4 @@ async def signInWithEmailAddressAndPassword(
         raise
     except Exception as e:
         print(f"Exception on signInWithEmailAddressAndPassword: {e}")
-        raise HTTPException(status_code=500, detail=exceptionMessages.serverErrorMessage)
+        raise HTTPException(status_code=500, detail=errorMessages.serverErrorMessage)
